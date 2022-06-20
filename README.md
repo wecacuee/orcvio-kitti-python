@@ -2,6 +2,30 @@
 
 - this repo implements [OrcVIO](https://moshan.cf/orcvio_githubpage/) for KITTI dataset 
 
+
+## Install
+
+``` shellsession
+$ conda env create -f environment.yml
+$ conda activate orcvio-cov
+$ CMAKE_PREFIX_PATH=/home/vdhiman/.local/miniconda3/envs/orcvio-cov/lib/python3.8/site-packages/pybind11 pip install sophuspy
+```
+
+* Install g2opy from https://github.com/uoip/g2opy
+
+* Make sure your pangolin installation contains python bindings. Make sure pybind11 submodule is checked out. And install pypangolin bindings with `cmake --build . -t pypangolin_pip_install`
+
+
+* Download yolov3.weights
+    mkdir -p third_party/pytorch_models/yolo/trained_model/
+    wget http://pjreddie.com/media/files/yolov3.weights -O third_party/pytorch_models/yolo/trained_model/yolov3.weights
+
+* Download starmap weights
+    mkdir -p third_party/pytorch_models/starmap/trained_models/no_dropout/
+    wget https://raw.githubusercontent.com/wecacuee/StarMap-models/master/model_cpu.pth -O third_party/pytorch_models/starmap/trained_models/no_dropout/model_cpu.pth
+   
+   
+
 ## dependencies 
 
 - same dependencies as in [VO step](https://github.com/shanmo/kitti-vo-prediction)

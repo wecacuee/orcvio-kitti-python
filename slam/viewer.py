@@ -2,12 +2,18 @@ import numpy as np
 import cv2
 
 import OpenGL.GL as gl
-import pangolin
+import pypangolin as pangolin
 
 import time
 from multiprocessing import Process, Queue
 
 
+def pango_DrawLines(points):
+    return pangolin.glDrawLines(points)
+
+def pango_DrawBoxes(cameras, sizes):
+    for (c, s) in zip(cameras, sizes):
+        pangolin.glDrawRectPerimeter(c);
 
 class DynamicArray(object):
     def __init__(self, shape=3):
@@ -165,19 +171,24 @@ class MapViewer(object):
         gl.glBlendFunc (gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
 
         panel = pangolin.CreatePanel('menu')
-        panel.SetBounds(0.5, 1.0, 0.0, 175 / 1024.)
+        panel.SetBounds(
+            pangolin.Attach.Frac(0.5),
+            pangolin.Attach.Frac(1.0),
+            pangolin.Attach.Frac(0.0),
+            pangolin.Attach.Frac(175 / 1024.))
 
+        var_ui = pangolin.Var("ui")
         # checkbox
-        m_follow_camera = pangolin.VarBool('menu.Follow Camera', value=True, toggle=True)
-        m_show_points = pangolin.VarBool('menu.Show Points', True, True)
-        m_show_keyframes = pangolin.VarBool('menu.Show KeyFrames', True, True)
-        m_show_graph = pangolin.VarBool('menu.Show Graph', True, True)
-        m_show_image = pangolin.VarBool('menu.Show Image', True, True)
+        var_ui.m_follow_camera = (True, pangolin.VarMeta(toggle=True))
+        var_ui.m_show_points = (True, pangolin.VarMeta(toggle=True))
+        var_ui.m_show_keyframes = (True, pangolin.VarMeta(toggle=True))
+        var_ui.m_show_graph = (True, pangolin.VarMeta(toggle=True))
+        var_ui.m_show_image = (True, pangolin.VarMeta(toggle=True))
 
         # button
-        m_replay = pangolin.VarBool('menu.Replay', value=False, toggle=False)
-        m_refresh = pangolin.VarBool('menu.Refresh', False, False)  
-        m_reset = pangolin.VarBool('menu.Reset', False, False)
+        var_ui.m_replay = (False, pangolin.VarMeta(toggle=False))
+        var_ui.m_refresh = (False, pangolin.VarMeta(toggle=False))
+        var_ui.m_reset = (False, pangolin.VarMeta(toggle=False))
 
         if self.config is None:
             width, height = 400, 250
@@ -205,15 +216,24 @@ class MapViewer(object):
 
         # Add named OpenGL viewport to window and provide 3D Handler
         dcam = pangolin.CreateDisplay()
-        dcam.SetBounds(0.0, 1.0, 175 / 1024., 1.0, -1024 / 768.)
+        dcam.SetBounds(
+            pangolin.Attach(0.0),
+            pangolin.Attach(1.0),
+            pangolin.Attach(175 / 1024.),
+            pangolin.Attach(1.0),
+            -1024 / 768.)
         dcam.SetHandler(pangolin.Handler3D(scam))
 
 
         # image
         # width, height = 400, 130
         dimg = pangolin.Display('image')
-        dimg.SetBounds(0, height / 768., 0.0, width / 1024., 1024 / 768.)
-        dimg.SetLock(pangolin.Lock.LockLeft, pangolin.Lock.LockTop)
+        dimg.SetBounds(
+            pangolin.Attach(0),
+            pangolin.Attach(height / 768.),
+            pangolin.Attach(0.0),
+            pangolin.Attach(width / 1024.))
+        # dimg.SetLock(pangolin.Lock(0), pangolin.Lock(2))
 
         texture = pangolin.GlTexture(width, height, gl.GL_RGB, False, 0, gl.GL_RGB, gl.GL_UNSIGNED_BYTE)
         image = np.ones((height, width, 3), 'uint8')
@@ -237,9 +257,9 @@ class MapViewer(object):
         while not pangolin.ShouldQuit():
 
             if not self.q_pose.empty():
-                pose.m = self.q_pose.get()
+                pose.Matrix()[:] = self.q_pose.get()
 
-            follow = m_follow_camera.Get()
+            follow = var_ui.m_follow_camera
             if follow and following:
                 scam.Follow(pose, True)
             elif follow and not following:
@@ -256,24 +276,29 @@ class MapViewer(object):
 
 
             # show graph
+            graph = []
+            loops = []
             if not self.q_graph.empty():
-                graph = self.q_graph.get()
-                loops = np.array([_[0] for _ in graph if _[1] == 2])
-                graph = np.array([_[0] for _ in graph if _[1] < 2])
-            if m_show_graph.Get():
-                if len(graph) > 0:
+                qgraph = self.q_graph.get()
+                loops = [np.array(e[0][:3]) for e in qgraph if e[1] == 2]
+                graph = [np.array(e[0][:3]) for e in qgraph if e[1] < 2]
+            if var_ui.m_show_graph:
+                if len(graph) >= 2:
                     gl.glLineWidth(1)
                     gl.glColor3f(0.0, 1.0, 0.0)
-                    pangolin.DrawLines(graph, 3)
-                if len(loops) > 0:
+                    n = len(graph)
+                    pango_DrawLines(graph[:(n//2)*2])
+                if len(loops) >= 2:
                     gl.glLineWidth(2)
                     gl.glColor3f(0.0, 0.0, 0.0)
-                    pangolin.DrawLines(loops, 4)
+                    n = len(graph)
+                    pango_DrawLines(loops[:(n//2)*2])
 
                 gl.glPointSize(4)
                 gl.glColor3f(1.0, 0.0, 0.0)
                 gl.glBegin(gl.GL_POINTS)
-                gl.glVertex3d(pose[0, 3], pose[1, 3], pose[2, 3])
+                posem = pose.Matrix()
+                gl.glVertex3d(posem[0, 3], posem[1, 3], posem[2, 3])
                 gl.glEnd()
 
             # show objects 
@@ -291,7 +316,8 @@ class MapViewer(object):
                 object_sizes.extend(sizes)
             gl.glLineWidth(3)
             gl.glColor3f(1.0, 0.0, 1.0)
-            pangolin.DrawBoxes(object_poses.array(), object_sizes.array())
+            # pangolin
+            # .DrawBoxes(object_poses.array(), object_sizes.array())
 
             # Show mappoints
             if not self.q_points.empty():
@@ -306,10 +332,10 @@ class MapViewer(object):
                     colors.clear()
                     colors.extend(cls)
 
-            if m_show_points.Get():
+            if var_ui.m_show_points:
                 gl.glPointSize(2)
                  # easily draw millions of points
-                pangolin.DrawPoints(mappoints.array(), colors.array())
+                pangolin.glDrawPoints(mappoints.array()) #, colors.array())
 
 
                 if not self.q_active.empty():
@@ -341,10 +367,10 @@ class MapViewer(object):
                     cameras.clear()
                 cameras.extend(cams)
                 
-            if m_show_keyframes.Get():
+            if var_ui.m_show_keyframes:
                 gl.glLineWidth(1)
                 gl.glColor3f(0.0, 0.0, 1.0)
-                pangolin.DrawCameras(cameras.array(), camera_width)
+                # pangolin.DrawCameras(cameras.array(), camera_width)
 
             
             # show image
@@ -355,17 +381,17 @@ class MapViewer(object):
                 else:
                     image = np.repeat(image[::-1, :, np.newaxis], 3, axis=2)
                 image = cv2.resize(image, (width, height))
-            if m_show_image.Get():         
+            if var_ui.m_show_image:
                 texture.Upload(image, gl.GL_RGB, gl.GL_UNSIGNED_BYTE)
                 dimg.Activate()
                 gl.glColor3f(1.0, 1.0, 1.0)
                 texture.RenderToViewport()
 
 
-            if pangolin.Pushed(m_replay):
+            if var_ui.m_replay:
                 replays = mappoints.array()
 
-            if pangolin.Pushed(m_reset):
+            if var_ui.m_reset:
                 m_show_graph.SetVal(True)
                 m_show_keyframes.SetVal(True)
                 m_show_points.SetVal(True)
@@ -373,7 +399,7 @@ class MapViewer(object):
                 m_follow_camera.SetVal(True)
                 follow_camera = True
 
-            if pangolin.Pushed(m_refresh):
+            if var_ui.m_refresh:
                 self.q_refresh.put(True)
             
 

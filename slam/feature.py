@@ -24,6 +24,7 @@ class ImageFeature(object):
             params.matching_cell_size * params.matching_neighborhood)
 
         self._lock = Lock()
+        self.unmatched = np.ones(len(self.keypoints), dtype=bool)
 
     def extract(self):
         self.keypoints = self.detector.detect(self.image)
@@ -100,6 +101,8 @@ class ImageFeature(object):
         keypoints = []
         descriptors = []
         indices = []
+        if not len(self.keypoints):
+            return keypoints, descriptors, indices
 
         with self._lock:
             for i in np.where(self.unmatched)[0]:
@@ -116,6 +119,8 @@ def row_match(matcher, kps1, desps1, kps2, desps2,
         matching_distance=40, 
         max_row_distance=2.5, 
         max_disparity=100):
+    assert len(desps1) > 0
+    assert len(desps2) > 0
 
     matches = matcher.match(np.array(desps1), np.array(desps2))
     good = []

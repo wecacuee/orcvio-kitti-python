@@ -17,8 +17,8 @@ class ImageReader(object):
         self.ahead = 10      # 10 images ahead of current index
         self.waiting = 1.5   # waiting time
 
-        self.preload_thread = Thread(target=self.preload)
-        self.thread_started = False
+        #self.preload_thread = Thread(target=self.preload)
+        #self.thread_started = False
 
     def read(self, path):
         img = cv2.imread(path, -1)

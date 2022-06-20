@@ -1,6 +1,7 @@
 import numpy as np
 
 def horn87(pointsS, pointsT, weight = None):
+  assert (pointsS * pointsS).sum() > 0, "pointsS = {}".format(pointsS)
   centerS = pointsS.mean(axis = 1)
   centerT = pointsT.mean(axis = 1)
   for i in range(pointsS.shape[1]):

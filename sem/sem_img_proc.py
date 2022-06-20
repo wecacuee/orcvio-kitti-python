@@ -91,7 +91,7 @@ def convert_kp_to_cv_kp(kps):
     """
     cv_kps = []
     for kp in kps:
-        cv_kps.append(cv2.KeyPoint(kp[0], kp[1], 5, class_id=0))
+        cv_kps.append(cv2.KeyPoint(kp[0], kp[1], 5, 0))
     return cv_kps
 
 def load_detection_starmap(img_id, base_starmap_results_path):
@@ -222,7 +222,7 @@ def detect_semantic_kps(img_original, starmap_model, bbox_trackers, load_detecti
             # note x, y order
             ps_list[k][1] += int(x1)
             ps_list[k][0] += int(y1)
-            kp = cv2.KeyPoint(ps_list[k][1], ps_list[k][0], 5, class_id=0)
+            kp = cv2.KeyPoint(ps_list[k][1], ps_list[k][0], 5, 0)
             kps_all.append(kp)
             bbox_id_all.append(bbox_track_id)
 

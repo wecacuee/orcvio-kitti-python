@@ -115,6 +115,7 @@ def get_R_starmap(hm, ps):
     :param ps:
     :return:
     """
+    assert len(ps[0]) > 0, "len(ps) = %d" % len(ps)
 
     canonical, pred, score = [], [], []
 
@@ -127,6 +128,8 @@ def get_R_starmap(hm, ps):
         dep = ((hm[0, 4, ps[0][k], ps[1][k]] + 0.5) * 64).astype(np.int32)
         pred.append([ps[1][k], 64 - dep, 64 - ps[0][k]])
         score.append(hm[0, 0, ps[0][k], ps[1][k]])
+
+    assert len(pred) > 0, "len(pred) = {}".format( len(pred))
 
     pred = np.array(pred).astype(np.float32)
     canonical = np.array(canonical).astype(np.float32)
@@ -159,9 +162,11 @@ def get_kps_and_R(model, input_var, heat_thresh, img):
     hm = output[-1].data.cpu().numpy()
 
     ps = parseHeatmap(hm[0], heat_thresh)
-
-    """obtain rotation"""
-    R_starmap = get_R_starmap(hm, ps)
+    if len(ps[0]) > 0: # "len(ps) = %d" % len(ps)
+        """obtain rotation"""
+        R_starmap = get_R_starmap(hm, ps)
+    else:
+        R_starmap = np.eye(3)
 
     kp_num = len(ps[0])
 

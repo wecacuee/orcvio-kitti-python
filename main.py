@@ -4,6 +4,7 @@ from collections import defaultdict
 import transforms3d as tf 
 import argparse
 from threading import Thread
+from pathlib import Path
 
 from slam.components import Camera
 from slam.components import StereoFrame
@@ -183,12 +184,14 @@ if __name__ == '__main__':
     parser.add_argument('--no_viz', action='store_true', help='do not visualize')
     parser.add_argument('--odom', type=str, help='odom idx', 
         default="06")
-    parser.add_argument('--load_det', type=str, help='whether to load saved front end detections', 
-        default="True")
+    parser.add_argument('--load_det', type=bool, help='whether to load saved front end detections', 
+        default=True)
     args = parser.parse_args()
 
     params = ParamsKITTI()
-    odom_path = "/mnt/disk2/kitti/Kitti_all_data/odometry/dataset/sequences/"
+    odom_path = str(
+        Path.home() /
+        Path("/data/orcvio_ws/kitti/dataset/sequences/"))
     dataset = KITTIOdometry(odom_path+args.odom)
     sptam = SPTAM(params)
 
@@ -226,7 +229,7 @@ if __name__ == '__main__':
         t = Thread(target=featurer.extract)
         t.start()
         featurel.extract()
-        t.join()
+        t.join(timeout=0.001)
         
         frame = StereoFrame(i, g2o.Isometry3d(), featurel, featurer, cam, timestamp=timestamp)
 
